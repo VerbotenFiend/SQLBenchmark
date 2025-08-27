@@ -22,7 +22,20 @@
     {% else %}
       <span class="badge">n/a</span>
     {% endif %}
-  </div>
+  
+  <!-- PROVA DI NORMALIZAZIONE DEL TESTO -->
+  {% if kv_blocks and kv_blocks|length > 0 %}
+    {% for block in kv_blocks %}
+      <div class="result-item">
+        <ul class="kv-list">
+          {% for p in block %}
+            <li><strong>{{ p.name }}:</strong> {{ p.value }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endfor %}
+  {% endif %}
+
 
   {% if rows and columns %}
     {% include "_table.html" %}
