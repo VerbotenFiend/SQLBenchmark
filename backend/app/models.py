@@ -26,7 +26,9 @@ class SearchResponseItem(BaseModel):
     properties: List[Property]
 
 class SqlRequest(BaseModel):
-    sql_query: str = Field(..., description="Sql query to execute")
+    sql_query: str = Field(
+        ..., 
+        description="Sql query to execute")
 
 class SqlResponse(BaseModel):
     sql_validation: str = Field(..., description="valid | invalid | unsafe")
@@ -34,3 +36,12 @@ class SqlResponse(BaseModel):
         ..., description="SQL search result: array of items"
     )
 
+class SearchRequest(BaseModel):
+    question: str = Field(
+        ...,
+        description="Question asked in natural language to the model"
+    )
+    model: str = Field(
+        ...,
+        description="The chosen model to ask"
+    )
