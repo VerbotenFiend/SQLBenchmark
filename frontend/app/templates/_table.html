@@ -8,7 +8,18 @@
     {% for r in rows %}
       <tr>
         {% for c in columns %}
-          <td>{{ r[c] if r is mapping else r[loop.index0] }}</td>
+          <td>
+            {% set cell = r[c] if r is mapping else r[loop.index0] %}
+            {% if c == "properties" and cell is iterable and cell is not string %}
+              <ul class="kv-list">
+                {% for p in cell %}
+                  <li><strong>{{ p.property_name }}:</strong> {{ p.property_value }}</li>
+                {% endfor %}
+              </ul>
+            {% else %}
+              {{ cell }}
+            {% endif %}
+          </td>
         {% endfor %}
       </tr>
     {% endfor %}

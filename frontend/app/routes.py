@@ -167,17 +167,6 @@ async def ui_sql(request: Request):
     if sql_validation == "valid" and results is not None:
         columns, rows = _normalize_results(results)
 
-
-    kv_blocks = []
-    if sql_validation == "valid" and results:
-        if isinstance(results, list) and isinstance(results[0], dict) and "properties" in results[0]:
-            for item in results:
-                props = item.get("properties") or []
-                block = [{"name": str(p.get("property_name", "")),
-                      "value": p.get("property_value", "")} for p in props]
-                if block:
-                    kv_blocks.append(block)
-
     return templates.TemplateResponse(
         "_result_row.html",
         {
@@ -188,7 +177,7 @@ async def ui_sql(request: Request):
             "sql_validation": sql_validation,
             "columns": columns,
             "rows": rows,
-            "kv_blocks": kv_blocks,   
+            # "kv_blocks": kv_blocks,   
         },
 )
 
@@ -249,29 +238,4 @@ async def ui_sql(request: Request):
 #     columns, rows = ([], [])
 #     if sql_validation == "valid" and results is not None:
 #         columns, rows = _normalize_results(results)
-
-
-#     kv_blocks = []
-#     if sql_validation == "valid" and results:
-#         if isinstance(results, list) and isinstance(results[0], dict) and "properties" in results[0]:
-#             for item in results:
-#                 props = item.get("properties") or []
-#                 block = [{"name": str(p.get("property_name", "")),
-#                       "value": p.get("property_value", "")} for p in props]
-#                 if block:
-#                     kv_blocks.append(block)
-
-#     return templates.TemplateResponse(
-#         "_result_row.html",
-#         {
-#             "request": request,
-#             "mode": "LLM",
-#             "when": datetime.now().strftime("%H:%M"),
-#             "sql": sql,
-#             "sql_validation": sql_validation,
-#             "columns": columns,
-#             "rows": rows,
-#             "kv_blocks": kv_blocks,   
-#         },
-# )
 

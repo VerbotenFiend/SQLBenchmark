@@ -22,24 +22,11 @@
     {% else %}
       <span class="badge">n/a</span>
     {% endif %}
-  
-  <!-- PROVA DI NORMALIZAZIONE DEL TESTO -->
-  {% if kv_blocks and kv_blocks|length > 0 %}
-    {% for block in kv_blocks %}
-      <div class="result-item">
-        <ul class="kv-list">
-          {% for p in block %}
-            <li><strong>{{ p.name }}:</strong> {{ p.value }}</li>
-          {% endfor %}
-        </ul>
-      </div>
-    {% endfor %}
-  {% endif %}
-
+  </div>
 
   {% if rows and columns %}
     {% include "_table.html" %}
   {% elif sql_validation in ["invalid", "unsafe"] %}
     <div class="muted">Nessun risultato perché la query non è valida/sicura.</div>
   {% endif %}
-</div>
+ 
