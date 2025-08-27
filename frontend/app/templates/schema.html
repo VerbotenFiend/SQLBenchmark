@@ -1,0 +1,18 @@
+<!-- Frammento inserito nel modal Schema -->
+<div class="schema">
+  {% if rows %}
+    <table class="tbl compact">
+      <thead><tr><th>table_name</th><th>column_name</th></tr></thead>
+      <tbody>
+      {% for row in rows %}
+        <tr>
+          <td><code>{{ row.get("table_name") }}</code></td>
+          <td><code>{{ row.get("column_name") }}</code></td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <div class="muted">Nessun dato schema da mostrare.</div>
+  {% endif %}
+</div>

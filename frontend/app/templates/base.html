@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>{{ title or "Text→SQL UI" }}</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="dark">
+  <!-- Top bar -->
+  <header class="topbar">
+    <div class="left">
+      <button id="btnSchema" class="btn ghost">Schema</button>
+    </div>
+    <!-- <div class="right">
+      <button id="btnAdd" class="btn circle lg" aria-label="Aggiungi" title="Aggiungi">+</button>
+    </div> -->
+    <div class="right" style="display:flex;flex-direction:row;align-items:center;gap:8px;white-space:nowrap;flex-wrap:nowrap">
+      <button id="btnClear" class="btn circle lg" aria-label="Pulisci chat" title="Pulisci chat">⟲</button>
+      <button id="btnAdd" class="btn circle lg" aria-label="Aggiungi" title="Aggiungi">+</button>
+    </div>
+
+  </header>
+
+  <!-- Main content -->
+  <main class="main">
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- Composer (sticky bottom, stile ChatGPT) -->
+  <footer class="composer">
+    <form id="composerForm" class="composer-inner">
+      <!-- sinistra: tendina modello  -->
+    <div class="model">
+      <button type="button" id="modelBtn" class="model-btn" aria-haspopup="true" aria-expanded="false">
+        <span id="modelLabel">gemma3:1b-it-qat</span> <span class="caret">▾</span>
+      </button>
+      <div id="modelMenu" class="menu hidden" role="menu" aria-labelledby="modelBtn">
+        <button type="button" class="menu-item" role="menuitem" data-value="gemma3:1b-it-qat">
+          gemma3:1b-it-qat <span class="tag">default</span>
+        </button>
+      </div>
+      <input type="hidden" id="modelHidden" name="model" value="gemma3:1b-it-qat">
+    </div>
+
+
+      <!-- textarea -->
+      <textarea id="prompt" name="prompt" rows="1" placeholder="Scrivi una richiesta in linguaggio naturale…"></textarea>
+
+      <!-- destra: switch LLM/SQL + invia -->
+      <div class="actions">
+        <label class="switch" title="Cambia modalità (LLM / SQL)">
+          <input id="modeSwitch" type="checkbox" />
+          <span class="slider"></span>
+          <span class="switch-label"><span id="modeLabel">LLM</span></span>
+        </label>
+        <button class="btn primary" id="sendBtn" type="submit">Invia</button>
+      </div>
+    </form>
+    <small class="hint">Enter invia • Shift+Enter va a capo</small>
+  </footer>
+
+  <!-- Modal Schema -->
+  <div id="schemaModal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h3>Schema del database</h3>
+        <button class="btn ghost" data-close="#schemaModal">✕</button>
+      </div>
+      <div id="schemaBody" class="modal-body">
+        <div class="muted">Caricamento…</div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn" id="refreshSchema">Aggiorna</button>
+        <button class="btn" data-close="#schemaModal">Chiudi</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Add/Update -->
+  <div id="addModal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h3>Aggiungi/Update (data_line)</h3>
+        <button class="btn ghost" data-close="#addModal">✕</button>
+      </div>
+      <form id="addForm" class="modal-body">
+        <label class="label">data_line</label>
+        <textarea name="data_line" placeholder="Titolo,Regista,Anno..." required></textarea>
+        <div id="addMsg" class="muted"></div>
+      </form>
+      <div class="modal-foot">
+        <button class="btn primary" id="addSubmit" type="button">Aggiungi</button>
+        <button class="btn" data-close="#addModal">Chiudi</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+
+  
+  // UI helpers
+  const qs = sel => document.querySelector(sel);
+  const qsa = sel => [...document.querySelectorAll(sel)];
+  const feed = () => qs("#feed");
+
+  // Autosize textarea 
+  const txt = qs("#prompt");
+  const modeSwitch = qs("#modeSwitch");
+  const modeLabel = qs("#modeLabel");
+  const modelSelect = qs("#modelSelect");
+  const modelHidden = qs("#modelHidden");
+  function autosize(){ this.style.height = "auto"; this.style.height = (this.scrollHeight)+"px"; }
+  txt.addEventListener("input", autosize);
+  txt.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); qs("#sendBtn").click(); }
+  });
+
+
+  //adattamento altezza del composer
+   function adjustFeedPadding(){
+    const composer = document.querySelector('.composer');
+    const feed = document.querySelector('.feed');
+    if (composer && feed) {
+      feed.style.paddingBottom = (composer.offsetHeight + 16) + 'px';
+    }
+  }
+  window.addEventListener('load', adjustFeedPadding);
+  window.addEventListener('resize', adjustFeedPadding);
+  // Se la textarea cambia altezza, aggiorna il padding:
+  if (txt) txt.addEventListener('input', adjustFeedPadding);
+
+
+  // Modal open/close
+  const openModal = (id) => { qs(id).classList.remove("hidden"); }
+  const closeModal = (id) => { qs(id).classList.add("hidden"); }
+  qsa("[data-close]").forEach(b => b.addEventListener("click", e => closeModal(b.getAttribute("data-close"))));
+
+  // Schema modal
+  qs("#btnSchema").addEventListener("click", async () => {
+    openModal("#schemaModal");
+    await loadSchema();
+  });
+  async function loadSchema(){
+    qs("#schemaBody").innerHTML = '<div class="muted">Caricamento…</div>';
+    const r = await fetch("/schema");
+    const html = await r.text();
+    qs("#schemaBody").innerHTML = html;
+  }
+  qs("#refreshSchema").addEventListener("click", loadSchema);
+
+  // Add modal
+
+  qs("#btnAdd").addEventListener("click", () => {
+    qs("#addMsg").textContent = "";
+    qs('#addForm').reset();
+    openModal("#addModal");
+  });
+
+    qs("#addSubmit").addEventListener("click", async () => {
+    const btn = qs("#addSubmit");
+    const msg = qs("#addMsg");
+    btn.disabled = true; btn.textContent = "Invio…";
+    msg.textContent = "";
+
+    try {
+      const fd = new FormData(qs("#addForm"));
+      const data_line = (fd.get("data_line") || "").toString();
+
+      const r = await fetch("/ui/add", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ data_line })
+      });
+
+      let data;
+      try { data = await r.json(); }
+      catch { throw new Error(`Risposta non JSON (${r.status})`); }
+
+      if (data.ok) {
+        msg.innerHTML = '<span class="badge valid">Aggiunto</span> Riga inserita/aggiornata correttamente.';
+        qs("#addForm").reset();
+      } else {
+        msg.innerHTML = '<span class="badge invalid">Errore</span> ' + (data.error || 'Errore sconosciuto');
+      }
+    } catch (e) {
+      msg.innerHTML = '<span class="badge invalid">Errore</span> ' + e.message;
+    } finally {
+      btn.disabled = false; btn.textContent = "Aggiungi";
+    }
+  });
+  
+  // Pulisci chat (svuota il feed e rimette il messaggio tip iniziale)
+qs("#btnClear").addEventListener("click", () => {
+  if (!confirm("Pulire la chat e ricominciare da capo?")) return;
+  const f = feed();
+  if (!f) return;
+  f.innerHTML = '<div class="bubble tip">Benvenuto! Usa la barra in basso per fare una ricerca LLM o inviare SQL diretto.</div>';
+  f.scrollTop = 0;
+});
+
+
+
+
+  // Switch modalità
+  function updateModeUI(){
+    const isSQL = modeSwitch.checked;
+    modeLabel.textContent = isSQL ? "SQL" : "LLM";
+    txt.placeholder = isSQL ? "Scrivi la tua query SQL…" : "Scrivi una richiesta in linguaggio naturale…";
+  }
+  modeSwitch.addEventListener("change", updateModeUI);
+  updateModeUI();
+
+  // FAKE OPEN
+  const modelBtn   = qs("#modelBtn");
+  const modelMenu  = qs("#modelMenu");
+  const modelLabel = qs("#modelLabel");
+  //const modelHidden = qs("#modelHidden");
+
+  // apri/chiudi menu
+  modelBtn.addEventListener("click", () => {
+    const nowOpen = modelMenu.classList.toggle("hidden") === false;
+    modelBtn.setAttribute("aria-expanded", nowOpen ? "true" : "false");
+    modelBtn.querySelector('.caret').textContent = nowOpen ? '▴' : '▾';
+    modelBtn.closest('.model').classList.toggle('open', nowOpen);
+  });
+
+
+  // clic su opzione 
+  qsa("#modelMenu .menu-item").forEach(item => {
+    item.addEventListener("click", () => {
+      const val = item.getAttribute("data-value");
+      modelHidden.value = val;           // per l'invio 
+      modelLabel.textContent = val;      // aggiorna etichetta
+      modelMenu.classList.add("hidden"); // chiudi menu
+      modelBtn.setAttribute("aria-expanded", "false");
+    });
+  });
+
+  // chiudi cliccando fuori
+  document.addEventListener("click", (e) => {
+    if (!qs(".model").contains(e.target)) {
+      modelMenu.classList.add("hidden");
+      modelBtn.setAttribute("aria-expanded", "false");
+    }
+  });
+  // chiudi con ESC
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      modelMenu.classList.add("hidden");
+      modelBtn.setAttribute("aria-expanded", "false");
+    }
+  });
+  document.addEventListener("click", (e) => {
+  if (!qs(".model").contains(e.target)) {
+    modelMenu.classList.add("hidden");
+    modelBtn.setAttribute("aria-expanded", "false");
+    modelBtn.querySelector('.caret').textContent = '▾';
+    modelBtn.closest('.model').classList.remove('open');
+  }
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      modelMenu.classList.add("hidden");
+      modelBtn.setAttribute("aria-expanded", "false");
+      modelBtn.querySelector('.caret').textContent = '▾';
+      modelBtn.closest('.model').classList.remove('open');
+    }
+  });
+
+
+  // Composer submit → /ui/search oppure /ui/sql, ritorna un HTML fragment da appendere al feed
+  qs("#composerForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const isSQL = modeSwitch.checked;
+    const prompt = txt.value.trim();
+    if (!prompt) return;
+
+    // Sposta in hidden il modello 
+    const model = modelHidden.value || "gemma3:1b-it-qat";
+
+    // placeholder “loading…”
+    const ph = document.createElement("div");
+    ph.className = "bubble loading";
+    ph.innerHTML = '<div class="spinner"></div> Elaborazione…';
+    feed().appendChild(ph);
+    feed().scrollTop = feed().scrollHeight;
+
+    const fd = new FormData();
+    if (isSQL) {
+      fd.append("sql_query", prompt);
+    } else {
+      fd.append("question", prompt);
+      fd.append("model", model);
+    }
+
+    const url = isSQL ? "/ui/sql" : "/ui/search";
+    try {
+      const r = await fetch(url, { method: "POST", body: fd });
+      const html = await r.text();
+      ph.remove();
+      const wrap = document.createElement("div");
+      wrap.innerHTML = html;
+      feed().appendChild(wrap.firstElementChild);
+      feed().scrollTop = feed().scrollHeight;
+      txt.value = ""; autosize.call(txt);
+    } catch (err){
+      ph.classList.remove("loading");
+      ph.innerHTML = '<span class="badge invalid">Errore</span> richiesta non riuscita.';
+    }
+  });
+
+
+  // Funzione globale
+function copySql(btn){
+  try {
+    const val = JSON.parse(btn.getAttribute('data-sql'));
+    const ta = document.createElement('textarea');
+    ta.value = val;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    alert('Copiato!');
+  } catch (e) {
+    alert('Copia non riuscita: ' + e.message);
+  }
+}
+
+</script>
+</body>
+</html>
+
+
+

@@ -1,0 +1,32 @@
+{# Frammento HTML: una “bubble” con SQL, validation e tabella risultati #}
+<div class="bubble">
+  <div class="row-head">
+    <span class="mode">{{ mode }}</span>
+    {% if when %}<span class="when">{{ when }}</span>{% endif %}
+  </div>
+  <div class="sqlbox">
+    <div class="sqlhead">
+      <strong>SQL generato</strong>
+      <button class="btn tiny ghost" data-sql='{{ sql|tojson }}' onclick="copySql(this)">Copia</button>
+    </div>
+    <pre class="sql">{{ sql or "—" }}</pre>
+  </div>
+
+  <div class="validation">
+    {% if sql_validation == "valid" %}
+      <span class="badge valid">valid</span>
+    {% elif sql_validation == "unsafe" %}
+      <span class="badge unsafe">unsafe</span>
+    {% elif sql_validation == "invalid" %}
+      <span class="badge invalid">invalid</span>
+    {% else %}
+      <span class="badge">n/a</span>
+    {% endif %}
+  </div>
+
+  {% if rows and columns %}
+    {% include "_table.html" %}
+  {% elif sql_validation in ["invalid", "unsafe"] %}
+    <div class="muted">Nessun risultato perché la query non è valida/sicura.</div>
+  {% endif %}
+</div>

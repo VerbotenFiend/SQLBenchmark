@@ -1,0 +1,132 @@
+from typing import List, Optional, Tuple
+import mariadb
+from ..db import get_connection
+
+# -------- parsing & validazione ---------------------------------------------
+
+def _parse_data_line(data_line: str) -> Tuple[str, str, int, int, str, List[str]]:
+ 
+    
+    parts = [p.strip() for p in data_line.split(",")]
+    if len(parts) != 7:
+        raise ValueError(f"Numero campi atteso = 7, trovato = {len(parts)}")
+
+    titolo, nome_regista, eta_s, anno_s, genere, p1, p2 = parts
+
+    if not titolo:
+        raise ValueError("Titolo mancante")
+    if not nome_regista:
+        raise ValueError("Nome regista mancante")
+    if not genere:
+        raise ValueError("Genere mancante")
+
+    try:
+        eta = int(eta_s)
+    except ValueError:
+        raise ValueError("Età_Autore deve essere un intero")
+
+    try:
+        anno = int(anno_s)
+    except ValueError:
+        raise ValueError("Anno deve essere un intero")
+
+    piattaforme: List[str] = []
+    for p in (p1, p2):
+        p = (p or "").strip()
+        if p:
+            piattaforme.append(p)
+
+    # deduplica e massimo 2 (già è al massimo 2, ma la deduplica è prudente)
+    seen = set()
+    dedup = []
+    for p in piattaforme:
+        k = p.lower()
+        if k not in seen:
+            seen.add(k)
+            dedup.append(p)
+    piattaforme = dedup[:2]
+
+    return titolo, nome_regista, eta, anno, genere, piattaforme
+
+# -------- helper DB (usano lo stesso cursor/connessione) --------------------
+
+def _get_or_create_regista(cur, nome: str, eta: int) -> int:
+    cur.execute("SELECT idR FROM regista WHERE nome = ?", (nome,))
+    row = cur.fetchone()
+    if row:
+        cur.execute("UPDATE regista SET eta=? WHERE idR=?", (eta, row[0]))
+        return row[0]
+    cur.execute("INSERT INTO regista (nome, eta) VALUES (?, ?)", (nome, eta))
+    return cur.lastrowid
+
+def _get_or_create_piattaforma(cur, nome: str) -> int:
+    cur.execute("SELECT idP FROM piattaforma WHERE nome = ?", (nome,))
+    row = cur.fetchone()
+    if row:
+        return row[0]
+    cur.execute("INSERT INTO piattaforma (nome) VALUES (?)", (nome,))
+    return cur.lastrowid
+
+def _upsert_film(cur, titolo: str, idR: int, anno: int, genere: str) -> int:
+    cur.execute("SELECT idF FROM film WHERE titolo = ?", (titolo,))
+    row = cur.fetchone()
+    if row:
+        cur.execute(
+            "UPDATE film SET idR=?, anno=?, genere=? WHERE idF=?",
+            (idR, anno, genere, row[0])
+        )
+        return row[0]
+    cur.execute(
+        "INSERT INTO film (titolo, idR, anno, genere) VALUES (?, ?, ?, ?)",
+        (titolo, idR, anno, genere)
+    )
+    return cur.lastrowid
+
+def _replace_piattaforme(cur, idF: int, piattaforme: List[str]):
+    """
+    Replace totale su 'dove_vederlo':
+    - se la riga non c'è, viene creata (idP1=idP2=NULL)
+    - poi si azzerano idP1 e idP2
+    - poi si riassegnano fino a due piattaforme nell'ordine dato
+    """
+    # assicura che esista una riga per il film
+    cur.execute("SELECT idF FROM dove_vederlo WHERE idF=?", (idF,))
+    if not cur.fetchone():
+        cur.execute("INSERT INTO dove_vederlo (idF, idP1, idP2) VALUES (?, NULL, NULL)", (idF,))
+
+    # pulizia
+    cur.execute("UPDATE dove_vederlo SET idP1=NULL, idP2=NULL WHERE idF=?", (idF,))
+
+    ids: List[Optional[int]] = []
+    for p in piattaforme[:2]:
+        pid = _get_or_create_piattaforma(cur, p)
+        ids.append(pid)
+
+    if len(ids) >= 1:
+        cur.execute("UPDATE dove_vederlo SET idP1=? WHERE idF=?", (ids[0], idF))
+    if len(ids) == 2:
+        cur.execute("UPDATE dove_vederlo SET idP2=? WHERE idF=?", (ids[1], idF))
+
+# -------- entrypoint logico --------------------------------------------------
+
+def add_line(data_line: str) -> None:
+    """
+    - parse & validate
+    - upsert regista/film
+    - replace piattaforme
+    - commit / rollback
+    """
+    titolo, nome_regista, eta, anno, genere, piattaforme = _parse_data_line(data_line)
+
+    conn = get_connection()
+    try:
+        cur = conn.cursor()
+        idR = _get_or_create_regista(cur, nome_regista, eta)
+        idF = _upsert_film(cur, titolo, idR, anno, genere)
+        _replace_piattaforme(cur, idF, piattaforme)
+        conn.commit()
+    except mariadb.Error as e:
+        conn.rollback()
+        raise ValueError(f"Errore DB: {e}")
+    finally:
+        conn.close()

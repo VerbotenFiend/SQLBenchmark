@@ -1,0 +1,16 @@
+<table class="tbl">
+  <thead>
+    <tr>
+      {% for c in columns %}<th>{{ c }}</th>{% endfor %}
+    </tr>
+  </thead>
+  <tbody>
+    {% for r in rows %}
+      <tr>
+        {% for c in columns %}
+          <td>{{ r[c] if r is mapping else r[loop.index0] }}</td>
+        {% endfor %}
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
