@@ -24,11 +24,15 @@ class SqlRequest(BaseModel):
     )
 
 class SqlResponse(BaseModel):
+    sql: str = Field(
+        ...,
+        description="The SQL query that was executed"
+    )
     sql_validation: str = Field(
         ...,
-        description= "valid | invalid | unsafe"
+        description="valid | invalid | unsafe"
     )
     results: Any = Field(
         ...,
-        description= "Query execution results"
+        description="Query execution results"
     )
