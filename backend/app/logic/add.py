@@ -5,8 +5,6 @@ from ..db import get_connection
 # -------- parsing & validazione ---------------------------------------------
 
 def _parse_data_line(data_line: str) -> Tuple[str, str, int, int, str, List[str]]:
- 
-    
     parts = [p.strip() for p in data_line.split(",")]
     if len(parts) != 7:
         raise ValueError(f"Numero campi atteso = 7, trovato = {len(parts)}")
@@ -23,7 +21,7 @@ def _parse_data_line(data_line: str) -> Tuple[str, str, int, int, str, List[str]
     try:
         eta = int(eta_s)
     except ValueError:
-        raise ValueError("Età_Autore deve essere un intero")
+        raise ValueError("Età deve essere un intero")
 
     try:
         anno = int(anno_s)
@@ -36,7 +34,7 @@ def _parse_data_line(data_line: str) -> Tuple[str, str, int, int, str, List[str]
         if p:
             piattaforme.append(p)
 
-    # deduplica e massimo 2 (già è al massimo 2, ma la deduplica è prudente)
+    # deduplica max 2
     seen = set()
     dedup = []
     for p in piattaforme:
@@ -48,7 +46,7 @@ def _parse_data_line(data_line: str) -> Tuple[str, str, int, int, str, List[str]
 
     return titolo, nome_regista, eta, anno, genere, piattaforme
 
-# -------- helper DB (usano lo stesso cursor/connessione) --------------------
+# -------- helper DB ----------------------------------------------------------
 
 def _get_or_create_regista(cur, nome: str, eta: int) -> int:
     cur.execute("SELECT idR FROM regista WHERE nome = ?", (nome,))
@@ -68,34 +66,35 @@ def _get_or_create_piattaforma(cur, nome: str) -> int:
     return cur.lastrowid
 
 def _upsert_film(cur, titolo: str, idR: int, anno: int, genere: str) -> int:
-    cur.execute("SELECT idF FROM film WHERE titolo = ?", (titolo,))
+    cur.execute("SELECT idF FROM movies WHERE titolo = ?", (titolo,))
     row = cur.fetchone()
     if row:
         cur.execute(
-            "UPDATE film SET idR=?, anno=?, genere=? WHERE idF=?",
+            "UPDATE movies SET idR=?, anno=?, genere=? WHERE idF=?",
             (idR, anno, genere, row[0])
         )
         return row[0]
     cur.execute(
-        "INSERT INTO film (titolo, idR, anno, genere) VALUES (?, ?, ?, ?)",
+        "INSERT INTO movies (titolo, idR, anno, genere) VALUES (?, ?, ?, ?)",
         (titolo, idR, anno, genere)
     )
     return cur.lastrowid
 
 def _replace_piattaforme(cur, idF: int, piattaforme: List[str]):
     """
-    Replace totale su 'dove_vederlo':
-    - se la riga non c'è, viene creata (idP1=idP2=NULL)
-    - poi si azzerano idP1 e idP2
-    - poi si riassegnano fino a due piattaforme nell'ordine dato
+    Replace totale su 'dove_vederlo'
     """
-    # assicura che esista una riga per il film
     cur.execute("SELECT idF FROM dove_vederlo WHERE idF=?", (idF,))
     if not cur.fetchone():
-        cur.execute("INSERT INTO dove_vederlo (idF, idP1, idP2) VALUES (?, NULL, NULL)", (idF,))
+        cur.execute(
+            "INSERT INTO dove_vederlo (idF, idP1, idP2) VALUES (?, NULL, NULL)",
+            (idF,)
+        )
 
-    # pulizia
-    cur.execute("UPDATE dove_vederlo SET idP1=NULL, idP2=NULL WHERE idF=?", (idF,))
+    cur.execute(
+        "UPDATE dove_vederlo SET idP1=NULL, idP2=NULL WHERE idF=?",
+        (idF,)
+    )
 
     ids: List[Optional[int]] = []
     for p in piattaforme[:2]:
@@ -107,15 +106,9 @@ def _replace_piattaforme(cur, idF: int, piattaforme: List[str]):
     if len(ids) == 2:
         cur.execute("UPDATE dove_vederlo SET idP2=? WHERE idF=?", (ids[1], idF))
 
-# -------- entrypoint logico --------------------------------------------------
+# -------- entrypoint ---------------------------------------------------------
 
 def add_line(data_line: str) -> None:
-    """
-    - parse & validate
-    - upsert regista/film
-    - replace piattaforme
-    - commit / rollback
-    """
     titolo, nome_regista, eta, anno, genere, piattaforme = _parse_data_line(data_line)
 
     conn = get_connection()
