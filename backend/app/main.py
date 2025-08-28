@@ -6,7 +6,6 @@ from .api.search_endpoints import router as search_router
 
 app = FastAPI(title="Esonero Backend")
 
-# aggiungo i router
 app.include_router(health_router)
 app.include_router(schema_router)
 app.include_router(add_router)

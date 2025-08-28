@@ -1,10 +1,8 @@
-# backend/app/ingest_tsv.py
 import os, sys, time, csv
 import mariadb
-from .logic.add import add_line  # presa da endpoint add
+from .logic.add import add_line  
 from . import config
 
-# lettura var di ambiente
 DB_HOST = config.DB_HOST
 DB_PORT = config.DB_PORT
 DB_USER = config.DB_USER
@@ -23,7 +21,7 @@ def wait_for_db(retries=60, delay=2.0):
             return
         except mariadb.Error:
             time.sleep(delay)
-    print("DB non raggiungibile dopo i tentativi previsti", file=sys.stderr)
+    print("DB not responding after several tries", file=sys.stderr)
     sys.exit(1)
 
 # controllo se in movies c'è qualcosa; se sì, è già popolato
@@ -58,7 +56,7 @@ def seed_from_tsv(tsv_path: str):
             # atteso: 7 colonne [titolo, regista, eta, anno, genere, p1, p2]
             if len(row) < 5:
                 errors += 1
-                print(f"[riga {idx}] colonne insufficienti: {row}", file=sys.stderr)
+                print(f"[row {idx}] columns given: {row}", file=sys.stderr)
                 continue
             # normalizza a 7 campi
             row = (row + ["", ""])[:7]
@@ -70,18 +68,18 @@ def seed_from_tsv(tsv_path: str):
                 inserted += 1
             except Exception as e:
                 errors += 1
-                print(f"[riga {idx}] ERRORE: {e}", file=sys.stderr)
-    print(f"Seed completato. Inserite: {inserted}, errori: {errors}, saltate: {skipped}")
+                print(f"[riga {idx}] ERROR: {e}", file=sys.stderr)
+    print(f"Seed completed. Inserted: {inserted}, errors: {errors}, skipped: {skipped}")
 
 if __name__ == "__main__":
     if not os.path.exists(TSV_PATH):
-        print(f"File TSV non trovato: {TSV_PATH}", file=sys.stderr)
-        sys.exit(0)  # non fallire l'app se manca il seed
+        print(f"File TSV not found: {TSV_PATH}", file=sys.stderr)
+        sys.exit(0)
 
     wait_for_db()
 
     if db_has_data():
-        print("DB già popolato: seed saltato.")
+        print("DB is already populated: seed skipped.")
         sys.exit(0)
 
     seed_from_tsv(TSV_PATH)

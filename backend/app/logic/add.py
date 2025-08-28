@@ -2,31 +2,31 @@ from typing import List, Optional, Tuple
 import mariadb
 from ..db import get_connection
 
-# -------- parsing & validazione ---------------------------------------------
+# -------- parsing & validation ---------------------------------------------
 
 def _parse_data_line(data_line: str) -> Tuple[str, str, int, int, str, List[str]]:
     parts = [p.strip() for p in data_line.split(",")]
     if len(parts) != 7:
-        raise ValueError(f"Numero campi atteso = 7, trovato = {len(parts)}")
+        raise ValueError(f"Number of fields expected = 7, found = {len(parts)}")
 
     titolo, nome_regista, eta_s, anno_s, genere, p1, p2 = parts
 
     if not titolo:
-        raise ValueError("Titolo mancante")
+        raise ValueError("Missing 'titolo'")
     if not nome_regista:
-        raise ValueError("Nome regista mancante")
+        raise ValueError("'nome' missing")
     if not genere:
-        raise ValueError("Genere mancante")
+        raise ValueError("'genere' missing")
 
     try:
         eta = int(eta_s)
     except ValueError:
-        raise ValueError("Età deve essere un intero")
+        raise ValueError("'eta' must be an integer")
 
     try:
         anno = int(anno_s)
     except ValueError:
-        raise ValueError("Anno deve essere un intero")
+        raise ValueError("'anno' must be an integer")
 
     piattaforme: List[str] = []
     for p in (p1, p2):
@@ -34,7 +34,6 @@ def _parse_data_line(data_line: str) -> Tuple[str, str, int, int, str, List[str]
         if p:
             piattaforme.append(p)
 
-    # deduplica max 2
     seen = set()
     dedup = []
     for p in piattaforme:
@@ -46,7 +45,7 @@ def _parse_data_line(data_line: str) -> Tuple[str, str, int, int, str, List[str]
 
     return titolo, nome_regista, eta, anno, genere, piattaforme
 
-# -------- helper DB ----------------------------------------------------------
+# -------- DB helper ----------------------------------------------------------
 
 def _get_or_create_regista(cur, nome: str, eta: int) -> int:
     cur.execute("SELECT idR FROM regista WHERE nome = ?", (nome,))
@@ -81,9 +80,7 @@ def _upsert_film(cur, titolo: str, idR: int, anno: int, genere: str) -> int:
     return cur.lastrowid
 
 def _replace_piattaforme(cur, idF: int, piattaforme: List[str]):
-    """
-    Replace totale su 'dove_vederlo'
-    """
+
     cur.execute("SELECT idF FROM dove_vederlo WHERE idF=?", (idF,))
     if not cur.fetchone():
         cur.execute(
@@ -120,6 +117,6 @@ def add_line(data_line: str) -> None:
         conn.commit()
     except mariadb.Error as e:
         conn.rollback()
-        raise ValueError(f"Errore DB: {e}")
+        raise ValueError(f"DB error: {e}")
     finally:
         conn.close()

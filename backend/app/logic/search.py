@@ -4,13 +4,13 @@ import re
 from ..models import SqlRequest, SqlResponse, Property, SearchResponseItem
 from typing import Optional, List
 
-def _infer_item_type(sql: str) -> str:
-    m = re.search(r"\bfrom\s+([`\"]?)(\w+)\1\b", sql, flags=re.IGNORECASE)
-    return (m.group(2) if m else "item")
+# Codice originario
+# def _infer_item_type(sql: str) -> str:
+#     m = re.search(r"\bfrom\s+([`\"]?)(\w+)\1\b", sql, flags=re.IGNORECASE)
+#     return (m.group(2) if m else "item")
 
 def sqlsearch(request: SqlRequest) -> SqlResponse:
     validation = "invalid"
-    # None for invalid/unsafe cases; list (possibly empty) for valid
     results: Optional[List[SearchResponseItem]] = None
     query = request.sql_query.strip()
 
@@ -69,7 +69,6 @@ def sqlsearch(request: SqlRequest) -> SqlResponse:
             validation = "unsafe"
 
     except mariadb.Error:
-        # Mantieni "invalid" e results vuoto
         return SqlResponse(sql_validation=validation, results=results)
 
     finally:

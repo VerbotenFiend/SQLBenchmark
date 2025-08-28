@@ -8,5 +8,5 @@ def get_connection():
         user=config.DB_USER,
         password=config.DB_PASSWORD,
         database=config.DB_NAME,
-        autocommit=False,  # utile per /add
+        autocommit=False, 
     )

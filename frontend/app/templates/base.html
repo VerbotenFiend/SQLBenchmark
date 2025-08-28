@@ -12,9 +12,6 @@
     <div class="left">
       <button id="btnSchema" class="btn ghost">Schema</button>
     </div>
-    <!-- <div class="right">
-      <button id="btnAdd" class="btn circle lg" aria-label="Aggiungi" title="Aggiungi">+</button>
-    </div> -->
     <div class="right" style="display:flex;flex-direction:row;align-items:center;gap:8px;white-space:nowrap;flex-wrap:nowrap">
       <button id="btnClear" class="btn circle lg" aria-label="Pulisci chat" title="Pulisci chat">⟲</button>
       <button id="btnAdd" class="btn circle lg" aria-label="Aggiungi" title="Aggiungi">+</button>
@@ -100,8 +97,6 @@
 
   <!-- ora comincia lo script -->
   <script>
-
-  
   // UI helpers
   const qs = sel => document.querySelector(sel);
   const qsa = sel => [...document.querySelectorAll(sel)];
@@ -193,7 +188,7 @@
     }
   });
   
-  // Pulisci chat (svuota il feed e rimette il messaggio tip iniziale)
+  // Pulisci chat
 qs("#btnClear").addEventListener("click", () => {
   if (!confirm("Pulire la chat e ricominciare da capo?")) return;
   const f = feed();
@@ -218,7 +213,7 @@ qs("#btnClear").addEventListener("click", () => {
   const modelBtn   = qs("#modelBtn");
   const modelMenu  = qs("#modelMenu");
   const modelLabel = qs("#modelLabel");
-  //const modelHidden = qs("#modelHidden");
+  
 
   // apri/chiudi menu
   modelBtn.addEventListener("click", () => {
@@ -233,9 +228,9 @@ qs("#btnClear").addEventListener("click", () => {
   qsa("#modelMenu .menu-item").forEach(item => {
     item.addEventListener("click", () => {
       const val = item.getAttribute("data-value");
-      modelHidden.value = val;           // per l'invio 
-      modelLabel.textContent = val;      // aggiorna etichetta
-      modelMenu.classList.add("hidden"); // chiudi menu
+      modelHidden.value = val;           
+      modelLabel.textContent = val;      
+      modelMenu.classList.add("hidden"); 
       modelBtn.setAttribute("aria-expanded", "false");
     });
   });
@@ -313,8 +308,6 @@ qs("#btnClear").addEventListener("click", () => {
     }
   });
 
-
-  // Funzione globale
 function copySql(btn){
   try {
     const val = JSON.parse(btn.getAttribute('data-sql'));

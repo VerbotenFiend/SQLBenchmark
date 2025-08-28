@@ -23,4 +23,3 @@ COPY app /app/app
 EXPOSE 8003
 
 ENTRYPOINT ["bash", "-lc", "python -m app.seed || echo '[WARN] seed saltato'; exec uvicorn app.main:app --host 0.0.0.0 --port ${APP_PORT:-8000}"]
-#CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${APP_PORT}"]

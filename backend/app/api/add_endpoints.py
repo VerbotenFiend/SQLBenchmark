@@ -10,5 +10,5 @@ def add(req: AddRequest):
         add_line(req.data_line)
         return {"status": "ok"}
     except ValueError as e:
-        # errori di validazione/DB → 422 come da specifica
+        # validation error/DB → 422
         raise HTTPException(status_code=422, detail=str(e))

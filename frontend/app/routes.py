@@ -4,9 +4,8 @@ from fastapi.templating import Jinja2Templates
 import httpx
 import os
 from datetime import datetime
-#aggiunta per prova
-# --- in cima a routes.py (dopo gli import esistenti) ---
-OLLAMA_URL = os.getenv("OLLAMA_URL", "http://ollama:11434")  # su Docker network
+#  da modificare
+OLLAMA_URL = os.getenv("OLLAMA_URL", "http://ollama:11434") 
 USE_OLLAMA_CHAT = os.getenv("USE_OLLAMA_CHAT", "true").lower() == "true"
 
 router = APIRouter()
@@ -28,14 +27,12 @@ def _normalize_results(res):
         if isinstance(first, dict):
             cols = list(first.keys())
             return cols, res
-        # lista di liste/tuple: deduciamo colonne numeriche
         cols = [str(i) for i in range(len(first))] if first else []
         rows = [list(r) for r in res]
         return cols, rows
     if isinstance(res, dict) and "columns" in res and "rows" in res:
         cols = res["columns"] or []
         rows_ll = res["rows"] or []
-        # prova a mappare rows (lista di liste) a lista di dict
         mapped = []
         for r in rows_ll:
             if isinstance(r, dict):
@@ -56,7 +53,7 @@ async def health(request: Request):
         data = resp.json()
     return templates.TemplateResponse("health.html", {"request": request, "data": data})
 
-# === SCHEMA: frammento per il modal ===
+# === SCHEMA ===
 @router.get("/schema", response_class=HTMLResponse)
 async def schema(request: Request):
     async with httpx.AsyncClient(timeout=20.0) as client:
@@ -64,7 +61,7 @@ async def schema(request: Request):
         rows = resp.json()
     return templates.TemplateResponse("schema.html", {"request": request, "rows": rows})
 
-# === ADD/UPDATE (fallback no-JS: redirect a /schema) ===
+# === ADD/UPDATE ===
 @router.post("/add")
 async def add_line(request: Request):
     form = await request.form()
@@ -80,17 +77,17 @@ async def add_line(request: Request):
             error = resp.json().get("detail", "Unknown error")
             return templates.TemplateResponse("index.html", {"request": request, "error": error, "data_line": data_line})
 
-# === ADD/UPDATE per modal (JS): ritorna JSON con esito ===
+# === ADD/UPDATE : ritorna JSON con esito ===
 @router.post("/ui/add", response_class=JSONResponse)
 async def add_line_modal(request: Request):
     try:
         payload = await request.json()
     except Exception:
-        return JSONResponse({"ok": False, "error": "Body JSON mancante/non valido"}, status_code=400)
+        return JSONResponse({"ok": False, "error": "JSON body missing or invalid"}, status_code=400)
 
     data_line = (payload.get("data_line") or "").strip()
     if not data_line:
-        return JSONResponse({"ok": False, "error": "Campo data_line mancante"}, status_code=400)
+        return JSONResponse({"ok": False, "error": "data_line is missing"}, status_code=400)
 
     try:
         async with httpx.AsyncClient(timeout=20.0) as client:
@@ -100,7 +97,7 @@ async def add_line_modal(request: Request):
                 headers={"Accept": "application/json"},
             )
     except httpx.RequestError as e:
-        return JSONResponse({"ok": False, "error": f"Errore di rete verso backend: {e}"}, status_code=502)
+        return JSONResponse({"ok": False, "error": f"Backend error: {e}"}, status_code=502)
 
     if resp.status_code in (200, 201):
         return JSONResponse({"ok": True})
