@@ -2,12 +2,12 @@
 <div class="schema">
   {% if rows %}
     <table class="tbl compact">
-      <thead><tr><th>table_name</th><th>column_name</th></tr></thead>
+      <thead><tr><th>table_name</th><th>table_column</th></tr></thead>
       <tbody>
       {% for row in rows %}
         <tr>
           <td><code>{{ row.get("table_name") }}</code></td>
-          <td><code>{{ row.get("column_name") }}</code></td>
+          <td><code>{{ row.get("table_column") }}</code></td>
         </tr>
       {% endfor %}
       </tbody>

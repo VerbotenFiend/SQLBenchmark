@@ -1,9 +1,9 @@
 from pydantic import BaseModel, Field
-from typing import List, Any
+from typing import List, Optional
 
 class SchemaRow(BaseModel):
     table_name: str
-    column_name: str
+    table_column: str
 
 class Health(BaseModel):
     status: str
@@ -32,8 +32,8 @@ class SqlRequest(BaseModel):
 
 class SqlResponse(BaseModel):
     sql_validation: str = Field(..., description="valid | invalid | unsafe")
-    results: List[SearchResponseItem] = Field(
-        ..., description="SQL search result: array of items"
+    results: Optional[List[SearchResponseItem]] = Field(
+        None, description="SQL search result: array of items or null when invalid/unsafe"
     )
 
 class SearchRequest(BaseModel):

@@ -8,4 +8,4 @@ router = APIRouter()
 @router.get("/schema_summary", response_model=List[SchemaRow])
 def schema_summary():
     rows = get_schema_rows()
-    return [SchemaRow(table_name=t, column_name=c) for t, c in rows]
+    return [SchemaRow(table_name=t, table_column=c) for t, c in rows]
