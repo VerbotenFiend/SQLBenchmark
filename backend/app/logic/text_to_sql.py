@@ -3,6 +3,7 @@ import json
 from typing import Optional, Dict, Any
 from ..models import SqlRequest, SqlResponse
 from ..config import OLLAMA_URL
+from ..db import get_connection
 
 async def text_to_sql(text_query: str, model: str = "gemma3:1b-it-qat", system_prompt: Optional[str] = None) -> str:
     """
