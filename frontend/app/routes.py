@@ -179,14 +179,14 @@ async def ui_sql(request: Request):
 )
 
 ##PROVA
-# @router.post("/ui/search", response_class=HTMLResponse)
-# async def ui_search(request: Request):
-#     form = await request.form()
-#     question = form.get("question", "").strip()
-#     model = form.get("model", "gemma3:1b-it-qat")
+@router.post("/ui/search", response_class=HTMLResponse)
+async def ui_search(request: Request):
+    form = await request.form()
+    question = form.get("question", "").strip()
+    model = form.get("model", "gemma3:1b-it-qat")
 
-#     if not question:
-#         return HTMLResponse("<div class='bubble'><span class='badge invalid'>Errore</span> Domanda mancante.</div>", status_code=400)
+    if not question:
+        return HTMLResponse("<div class='bubble'><span class='badge invalid'>Errore</span> Domanda mancante.</div>", status_code=400)
 
 #     # --- Modalità CHAT con Ollama: bypass del backend Text-to-SQL ---
 #     if USE_OLLAMA_CHAT:
@@ -224,15 +224,15 @@ async def ui_sql(request: Request):
 #             return HTMLResponse(f"<div class='bubble'><span class='badge invalid'>Errore</span> {e}</div>", status_code=500)
 
 #     # --- Modalità originale Text-to-SQL: chiama il backend ---
-#     async with httpx.AsyncClient(timeout=60.0) as client:
-#         resp = await client.post(f"{BACKEND_URL}/search", json={"question": question, "model": model})
-#         data = resp.json()
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        resp = await client.post(f"{BACKEND_URL}/search", json={"question": question, "model": model})
+        data = resp.json()
 
-#     sql = data.get("sql")
-#     sql_validation = data.get("sql_validation") or data.get("sql validation")
-#     results = data.get("results")
+    sql = data.get("sql")
+    sql_validation = data.get("sql_validation") or data.get("sql validation")
+    results = data.get("results")
 
-#     columns, rows = ([], [])
-#     if sql_validation == "valid" and results is not None:
-#         columns, rows = _normalize_results(results)
+    columns, rows = ([], [])
+    if sql_validation == "valid" and results is not None:
+        columns, rows = _normalize_results(results)
 

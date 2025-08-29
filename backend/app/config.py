@@ -12,4 +12,4 @@ DB_NAME = os.getenv("DB_NAME", "moviesdb")
 
 APP_PORT = int(os.getenv("APP_PORT", "8003"))
 
-OLLAMA_PORT = int(os.getenv("OLLAMA_PORT", "11434"))
+OLLAMA_URL = os.getenv("OLLAMA_URL", "http://ollama:11434")

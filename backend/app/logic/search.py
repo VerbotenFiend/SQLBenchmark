@@ -1,8 +1,9 @@
 from ..db import get_connection
 import mariadb
 import re
-from ..models import SqlRequest, SqlResponse, Property, SearchResponseItem
+from ..models import SqlRequest, SqlResponse, Property, SqlResponseItem, SearchRequest, SearchResponse
 from typing import Optional, List
+from .text_to_sql import text_to_sql
 
 # Codice originario
 # def _infer_item_type(sql: str) -> str:
@@ -11,7 +12,7 @@ from typing import Optional, List
 
 def sqlsearch(request: SqlRequest) -> SqlResponse:
     validation = "invalid"
-    results: Optional[List[SearchResponseItem]] = None
+    results: Optional[List[SqlResponseItem]] = None
     query = request.sql_query.strip()
 
     conn = None
@@ -57,7 +58,7 @@ def sqlsearch(request: SqlRequest) -> SqlResponse:
                             properties_list.append(Property(property_name="name", property_value=sval))
                         properties_list.append(Property(property_name=str(col_name), property_value=sval))
     
-                    results.append(SearchResponseItem(
+                    results.append(SqlResponseItem(
                         item_type="film",  # lasciamo fisso come richiede il test
                         properties=properties_list
                     ))
@@ -84,3 +85,42 @@ def sqlsearch(request: SqlRequest) -> SqlResponse:
                 pass
 
     return SqlResponse(sql_validation=validation, results=results)
+
+
+
+
+
+async def llmsearch(request: SearchRequest) -> SearchResponse:
+        try:
+            # 1) genera SQL dal testo (async!)
+            sql_query: str = await text_to_sql(request.question, request.model)
+
+            # 2) esegui l’SQL costruendo il tipo corretto
+            sql_response: SqlResponse = sqlsearch(SqlRequest(sql_query=sql_query))
+
+            # 3) incarta nel formato richiesto
+            return SearchResponse(
+                sql=sql_query,
+                sql_validation=sql_response.sql_validation,
+                results=sql_response.results
+            )
+        except Exception as e:
+            print(f"Error while executing search: {e}")
+            # 'sql' NON deve essere None
+            return SearchResponse(sql="", sql_validation="error", results=[])
+# def search(request: SearchRequest):
+#     try:
+#         sql_query = text_to_sql(request.question,request.model)
+#         sql_response = sqlsearch(sql_query)
+#         return SearchResponse(sql=sql_query, sql_validation=sql_response.sql_validation, results=sql_response.results)
+#     except Exception as e:
+#         # Log dell'errore (puoi sostituire con un logger se necessario)
+#         print(f"Error while executing search: {e}")
+#         # Restituiamo una risposta di errore
+#         return SearchResponse(
+#             sql=None,
+#             sql_validation="error",
+#             results=[],
+#         )
+    
+

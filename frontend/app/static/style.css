@@ -466,3 +466,20 @@ select:focus{
   border-radius:999px;
   padding:2px 6px;
 }
+
+/* Evidenziazione nuova risposta */
+@media (prefers-reduced-motion: no-preference){
+  .bubble.highlight {
+    animation: bubble-pop .18s ease-out, bubble-glow 1500ms ease-out;
+  }
+  @keyframes bubble-pop{
+    from{ transform: translateY(6px) scale(0.985); opacity: 0; }
+    to  { transform: none; opacity: 1; }
+  }
+  @keyframes bubble-glow{
+    0%   { box-shadow: 0 0 0 0 rgba(77,163,255,.55); }
+    60%  { box-shadow: 0 0 0 10px rgba(77,163,255,0); }
+    100% { box-shadow: 0 0 0 0 rgba(77,163,255,0); }
+  }
+}
+

@@ -282,7 +282,6 @@ qs("#btnClear").addEventListener("click", () => {
     ph.className = "bubble loading";
     ph.innerHTML = '<div class="spinner"></div> Elaborazione…';
     feed().appendChild(ph);
-    feed().scrollTop = feed().scrollHeight;
 
     const fd = new FormData();
     if (isSQL) {
@@ -299,9 +298,26 @@ qs("#btnClear").addEventListener("click", () => {
       ph.remove();
       const wrap = document.createElement("div");
       wrap.innerHTML = html;
-      feed().appendChild(wrap.firstElementChild);
-      feed().scrollTop = feed().scrollHeight;
-      txt.value = ""; autosize.call(txt);
+      
+            // prendi il nodo bubble appena creato
+      const bubble = wrap.firstElementChild;
+      feed().appendChild(bubble);
+
+      // 🔹 evidenzia la nuova bubble
+      bubble.classList.add('highlight');
+      setTimeout(() => bubble.classList.remove('highlight'), 1000);
+      
+      // allinea l’INIZIO del nuovo messaggio sotto la topbar
+      scrollBubbleIntoView(bubble, true);
+
+      // pulizia textarea
+      txt.value = "";
+      autosize.call(txt);
+
+      // il composer può cambiare altezza → aggiorna padding e riallinea (non smooth)
+      adjustFeedPadding();
+      scrollBubbleIntoView(bubble, false);
+
     } catch (err){
       ph.classList.remove("loading");
       ph.innerHTML = '<span class="badge invalid">Errore</span> richiesta non riuscita.';
@@ -322,6 +338,31 @@ function copySql(btn){
     alert('Copia non riuscita: ' + e.message);
   }
 }
+
+function scrollToBottom(smooth = true){
+  const go = () => {
+    const h = Math.max(
+      document.body.scrollHeight,
+      document.documentElement.scrollHeight
+    );
+    window.scrollTo({ top: h, behavior: smooth ? 'smooth' : 'auto' });
+  };
+  // doppio RAF per sicurezza (DOM → layout → scroll)
+  requestAnimationFrame(() => requestAnimationFrame(go));
+  setTimeout(go, 0);
+}
+
+function scrollBubbleIntoView(el, smooth = true){
+  if (!el) return;
+  const topbar = document.querySelector('.topbar');
+  const offset = (topbar?.offsetHeight || 0) + 12; // margine sotto la topbar
+  const rect = el.getBoundingClientRect();
+  const absoluteTop = rect.top + window.pageYOffset - offset;
+  window.scrollTo({ top: absoluteTop, behavior: smooth ? 'smooth' : 'auto' });
+}
+
+
+
 
 </script>
 </body>

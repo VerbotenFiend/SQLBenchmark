@@ -2,14 +2,15 @@ import httpx
 import json
 from typing import Optional, Dict, Any
 from ..models import SqlRequest, SqlResponse
+from ..config import OLLAMA_URL
 
-async def text_to_sql(text_query: str, model: str = "llama2", system_prompt: Optional[str] = None) -> str:
+async def text_to_sql(text_query: str, model: str = "gemma3:1b-it-qat", system_prompt: Optional[str] = None) -> str:
     """
     Converte una query in linguaggio naturale in SQL usando Ollama.
     
     Args:
         text_query: La query in linguaggio naturale (es. "trova tutte le proprietà a Milano")
-        model: Il modello Ollama da utilizzare (default: "llama2")
+        model: Il modello Ollama da utilizzare (default: "gemma3:1b-it-qat")
         system_prompt: Prompt di sistema opzionale per guidare la generazione
     
     Returns:
@@ -21,12 +22,11 @@ async def text_to_sql(text_query: str, model: str = "llama2", system_prompt: Opt
     """
     
     # Configurazione di base
-    OLLAMA_BASE_URL = "http://localhost:11434"
+    OLLAMA_BASE_URL = OLLAMA_URL
     
     # Prompt di sistema di default se non specificato
     if system_prompt is None:
         system_prompt = """Sei un esperto di SQL. Converti la richiesta dell'utente in una query SQL valida.
-        Usa solo SELECT, non modificare i dati.
         Restituisci SOLO la query SQL, senza spiegazioni o commenti aggiuntivi."""
     
     # Preparazione della richiesta per Ollama
@@ -111,39 +111,6 @@ def clean_sql_response(sql_response: str) -> str:
             cleaned_lines.append(line)
     
     return ' '.join(cleaned_lines).strip()
-
-async def text_to_sql_with_validation(text_query: str, model: str = "llama2") -> SqlResponse:
-    """
-    Versione integrata che combina text_to_sql con la validazione esistente.
-    
-    Args:
-        text_query: Query in linguaggio naturale
-        model: Modello Ollama da utilizzare
-        
-    Returns:
-        SqlResponse con validazione e risultati
-    """
-    try:
-        # Conversione da testo a SQL
-        sql_query = await text_to_sql(text_query, model)
-        
-        # Creazione di una SqlRequest per la validazione
-        sql_request = SqlRequest(sql_query=sql_query)
-        
-        # Import della funzione di ricerca esistente
-        from .search import sqlsearch
-        
-        # Validazione e esecuzione della query
-        result = sqlsearch(sql_request)
-        
-        return result
-        
-    except Exception as e:
-        # In caso di errore, restituiamo una risposta con validazione "invalid"
-        return SqlResponse(
-            sql_validation="invalid",
-            results=None
-        )
 
 # Funzione di utilità per testare la connessione a Ollama
 async def test_ollama_connection() -> bool:

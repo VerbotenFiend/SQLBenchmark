@@ -1,13 +1,14 @@
 from fastapi import APIRouter
-from app.models import SqlRequest, SearchRequest
-from ..logic.search import sqlsearch
+from app.models import SqlRequest, SearchRequest, SearchResponse
+from ..logic.search import sqlsearch, llmsearch
 
 router = APIRouter()
 
 @router.post("/sql_search")
-def search(request: SqlRequest):
+def sql_search(request: SqlRequest): 
     return sqlsearch(request)
 
-@router.post("/search")
-def ask_ollama(request: SearchRequest):
-    return
+@router.post("/search", response_model=SearchResponse)
+async def ask_ollama(request: SearchRequest):  # <- async
+    return await llmsearch(request)            # <- await
+

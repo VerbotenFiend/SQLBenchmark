@@ -21,7 +21,7 @@ class Property(BaseModel):
     property_name: str
     property_value: str
 
-class SearchResponseItem(BaseModel):
+class SqlResponseItem(BaseModel):
     item_type: str
     properties: List[Property]
 
@@ -32,7 +32,7 @@ class SqlRequest(BaseModel):
 
 class SqlResponse(BaseModel):
     sql_validation: str = Field(..., description="valid | invalid | unsafe")
-    results: Optional[List[SearchResponseItem]] = Field(
+    results: Optional[List[SqlResponseItem]] = Field(
         None, description="SQL search result: list of items or null when invalid/unsafe"
     )
 
@@ -45,3 +45,14 @@ class SearchRequest(BaseModel):
         ...,
         description="The chosen model to ask"
     )
+    
+class SearchResponse(BaseModel):
+    sql : str = Field(
+        "",
+        description="LLM generated query"
+    )
+    sql_validation: str = Field(..., description="valid | invalid | unsafe")
+    results: Optional[List[SqlResponseItem]] = Field(
+        None, description="SQL search result: list of items or null when invalid/unsafe"
+    )
+    
