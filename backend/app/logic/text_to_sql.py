@@ -1,130 +1,152 @@
-import httpx
+import os
 import json
-from typing import Optional, Dict, Any
+import httpx
+from typing import Optional
 from ..models import SqlRequest, SqlResponse
 from ..config import OLLAMA_URL
-from ..db import get_connection
+from ..db import get_connection  # per leggere information_schema
 
-async def text_to_sql(text_query: str, model: str = "gemma3:1b-it-qat", system_prompt: Optional[str] = None) -> str:
-    """
-    Converte una query in linguaggio naturale in SQL usando Ollama.
-    
-    Args:
-        text_query: La query in linguaggio naturale (es. "trova tutte le proprietà a Milano")
-        model: Il modello Ollama da utilizzare (default: "gemma3:1b-it-qat")
-        system_prompt: Prompt di sistema opzionale per guidare la generazione
-    
-    Returns:
-        La query SQL generata
-        
-    Raises:
-        requests.RequestException: Se c'è un errore di connessione
-        ValueError: Se la risposta di Ollama non è valida
-    """
-    
-    # Configurazione di base
-    OLLAMA_BASE_URL = OLLAMA_URL
-    
-    # Prompt di sistema di default se non specificato
-    if system_prompt is None:
-        system_prompt = """Sei un esperto di SQL. Converti la richiesta dell'utente in una query SQL valida.
-        Restituisci SOLO la query SQL, senza spiegazioni o commenti aggiuntivi."""
-    
-    # Preparazione della richiesta per Ollama
-    payload = {
-        "model": model,
-        "prompt": f"{system_prompt}\n\nRichiesta utente: {text_query}",
-        "stream": False,
-        "options": {
-            "temperature": 0.1,  # Bassa temperatura per risposte più deterministiche
-            "top_p": 0.9,
-            "max_tokens": 500
-        }
-    }
-    
-    try:
-        # Invio della richiesta a Ollama
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.post(
-                f"{OLLAMA_BASE_URL}/api/generate",
-                json=payload,
-                headers={"Content-Type": "application/json"}
-            )
-        
-        # Controllo dello status code
-        response.raise_for_status()
-        
-        # Parsing della risposta
-        response_data = response.json()
-        
-        # Estrazione della risposta generata
-        if "response" in response_data:
-            sql_query = response_data["response"].strip()
-            
-            # Pulizia della risposta (rimozione di markdown, commenti extra, ecc.)
-            sql_query = clean_sql_response(sql_query)
-            
-            return sql_query
-        else:
-            raise ValueError("Risposta di Ollama non valida: campo 'response' mancante")
-            
-    except httpx.ConnectError:
-        raise httpx.RequestError("Impossibile connettersi a Ollama. Assicurati che sia in esecuzione su localhost:11434")
-    except httpx.TimeoutException:
-        raise httpx.RequestError("Timeout nella richiesta a Ollama")
-    except json.JSONDecodeError:
-        raise ValueError("Risposta di Ollama non è un JSON valido")
-    except Exception as e:
-        raise Exception(f"Errore imprevisto durante la comunicazione con Ollama: {str(e)}")
+# Config slide-friendly
+DEFAULT_MODEL = os.getenv("DEFAULT_MODEL", "gemma3:1b-it-qat")
+FORCE_DEFAULT_MODEL = os.getenv("GROUP_SIZE", "2") == "2"  # se siete in 2, ignorate 'model' input
 
-def clean_sql_response(sql_response: str) -> str:
+async def _ensure_model_available(model: str) -> None:
+    """Verifica se il modello è installato. Se manca, lo scarica (pull) e ritorna quando disponibile."""
+    async with httpx.AsyncClient(timeout=None) as client:
+        # 1) controlla modelli presenti
+        tags = await client.get(f"{OLLAMA_URL}/api/tags")
+        if tags.status_code == 200:
+            names = [m.get("name") for m in tags.json().get("models", [])]
+            if model in names:
+                return
+        # 2) pull (non streaming per semplicità)
+        resp = await client.post(f"{OLLAMA_URL}/api/pull",
+                                 json={"name": model, "stream": False},
+                                 headers={"Accept": "application/json"})
+        resp.raise_for_status()
+        # a questo punto il modello deve apparire in /api/tags
+
+def _build_schema_prompt() -> str:
     """
-    Pulisce la risposta SQL da Ollama rimuovendo markdown e commenti extra.
-    
-    Args:
-        sql_response: La risposta grezza da Ollama
-        
-    Returns:
-        La query SQL pulita
+    Costruisce un riassunto dello schema dal DB (information_schema),
+    come richiesto dalle slide, da inserire nel prompt.
     """
-    # Rimozione di markdown code blocks
+    conn = get_connection()
+    cur = conn.cursor()
+    # Nota: limita a TABELLE del tuo schema corrente (database in uso)
+    cur.execute("""
+        SELECT TABLE_NAME, COLUMN_NAME, DATA_TYPE
+        FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
+        ORDER BY TABLE_NAME, ORDINAL_POSITION
+    """)
+    rows = cur.fetchall()
+    cur.close(); conn.close()
+
+    # Aggrega per tabella
+    schema = {}
+    for table, col, typ in rows:
+        schema.setdefault(table, []).append(f"{col} ({typ})")
+
+    # Formattazione chiara e sintetica
+    lines = []
+    for table, cols in schema.items():
+        cols_str = ", ".join(cols)
+        lines.append(f"- {table}: {cols_str}")
+    return "Schema del database:\n" + "\n".join(lines)
+
+def _default_system_prompt() -> str:
+    # Prompt minimale, in linea con le slide: “restituisci SOLO la query SQL”
+    return (
+        "Sei un esperto di SQL per MariaDB.\n"
+        "Converti la richiesta dell'utente in una query SQL **solo SELECT** valida e sicura.\n"
+        "RESTITUISCI SOLO la query SQL, senza commenti, testo o markdown."
+    )
+
+def _clean_sql_response(sql_response: str) -> str:
+    # come la tua funzione corrente: togli block ```sql ... ```
     if "```sql" in sql_response:
         start = sql_response.find("```sql") + 6
         end = sql_response.find("```", start)
         if end != -1:
             sql_response = sql_response[start:end]
-    
-    # Rimozione di code blocks generici
     elif "```" in sql_response:
         start = sql_response.find("```") + 3
         end = sql_response.find("```", start)
         if end != -1:
             sql_response = sql_response[start:end]
-    
-    # Rimozione di commenti extra e spazi bianchi
-    lines = sql_response.split('\n')
-    cleaned_lines = []
-    
-    for line in lines:
-        line = line.strip()
-        # Salta linee vuote o commenti
-        if line and not line.startswith('--') and not line.startswith('#'):
-            cleaned_lines.append(line)
-    
-    return ' '.join(cleaned_lines).strip()
 
-# Funzione di utilità per testare la connessione a Ollama
+    # rimuovi commenti e righe vuote
+    lines = [ln.strip() for ln in sql_response.split("\n")]
+    lines = [ln for ln in lines if ln and not ln.startswith("--") and not ln.startswith("#")]
+    return " ".join(lines).strip()
+
+async def text_to_sql(
+    text_query: str,
+    model: str = DEFAULT_MODEL,
+    system_prompt: Optional[str] = None
+) -> str:
+    """
+    Converte una richiesta naturale in SQL, garantendo:
+    - modello disponibile (auto-pull se manca),
+    - prompt con schema dinamico (information_schema),
+    - output SOLO query SQL (senza testo extra).
+    """
+    if FORCE_DEFAULT_MODEL:
+        model = DEFAULT_MODEL  # slide: se gruppo da 2, usate sempre gemma3:1b-it-qat
+
+    # 1) assicurati che il modello esista
+    await _ensure_model_available(model)
+
+    # 2) costruisci prompt con schema
+    schema_text = _build_schema_prompt()
+    sys = system_prompt or _default_system_prompt()
+    prompt = f"{sys}\n\n{schema_text}\n\nRichiesta utente: {text_query}"
+
+    payload = {
+        "model": model,
+        "prompt": prompt,
+        "stream": False,
+        "options": {
+            "temperature": 0.1,
+            "top_p": 0.9,
+            "max_tokens": 500,
+        },
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=None) as client:
+            resp = await client.post(
+                f"{OLLAMA_URL}/api/generate",
+                json=payload,
+                headers={"Content-Type": "application/json"},
+            )
+        # Se il modello non c'è (edge), prova una volta a pullare e ritentare
+        if resp.status_code == 404:
+            await _ensure_model_available(model)
+            async with httpx.AsyncClient(timeout=None) as client:
+                resp = await client.post(f"{OLLAMA_URL}/api/generate", json=payload)
+
+        resp.raise_for_status()
+        data = resp.json()
+        sql_raw = (data.get("response") or "").strip()
+        return _clean_sql_response(sql_raw)
+
+    except httpx.ConnectError:
+        raise httpx.RequestError(f"Impossibile connettersi a Ollama su {OLLAMA_URL}")
+    except httpx.TimeoutException:
+        raise httpx.RequestError("Timeout nella richiesta a Ollama")
+    except json.JSONDecodeError:
+        raise ValueError("Risposta di Ollama non è un JSON valido")
+    except Exception as e:
+        # Lascia che il livello superiore gestisca l'errore impostando sql="" e sql_validation="error"
+        raise Exception(f"Errore imprevisto durante la comunicazione con Ollama: {str(e)}")
+
+# (opzionale) test connessione: usa sempre OLLAMA_URL (non localhost)
 async def test_ollama_connection() -> bool:
-    """
-    Testa la connessione a Ollama.
-    
-    Returns:
-        True se Ollama è raggiungibile, False altrimenti
-    """
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
-            response = await client.get("http://localhost:11434/api/tags")
-            return response.status_code == 200
+            r = await client.get(f"{OLLAMA_URL}/api/tags")
+            return r.status_code == 200
     except:
         return False
-

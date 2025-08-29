@@ -178,7 +178,6 @@ async def ui_sql(request: Request):
         },
 )
 
-##PROVA
 @router.post("/ui/search", response_class=HTMLResponse)
 async def ui_search(request: Request):
     form = await request.form()
@@ -224,9 +223,16 @@ async def ui_search(request: Request):
 #             return HTMLResponse(f"<div class='bubble'><span class='badge invalid'>Errore</span> {e}</div>", status_code=500)
 
 #     # --- Modalità originale Text-to-SQL: chiama il backend ---
-    async with httpx.AsyncClient(timeout=60.0) as client:
+    # async with httpx.AsyncClient(timeout=60.0) as client:
+    #     resp = await client.post(f"{BACKEND_URL}/search", json={"question": question, "model": model})
+    #     data = resp.json()
+
+    # niente timeout di lettura/scrittura 
+    timeout = httpx.Timeout(timeout=None, connect=10.0, read=None, write=None, pool=None)
+    async with httpx.AsyncClient(timeout=timeout) as client:
         resp = await client.post(f"{BACKEND_URL}/search", json={"question": question, "model": model})
         data = resp.json()
+
 
     sql = data.get("sql")
     sql_validation = data.get("sql_validation") or data.get("sql validation")
@@ -235,4 +241,18 @@ async def ui_search(request: Request):
     columns, rows = ([], [])
     if sql_validation == "valid" and results is not None:
         columns, rows = _normalize_results(results)
+
+    return templates.TemplateResponse(
+    "_result_row.html",
+    {
+        "request": request,
+        "mode": "LLM",
+        "when": datetime.now().strftime("%H:%M"),
+        "sql": sql,
+        "sql_validation": sql_validation,
+        "columns": columns,
+        "rows": rows,
+    },
+)
+
 
