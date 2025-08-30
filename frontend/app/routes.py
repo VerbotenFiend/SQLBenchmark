@@ -12,7 +12,7 @@ USE_OLLAMA_CHAT = os.getenv("USE_OLLAMA_CHAT", "true").lower() == "true"
 router = APIRouter()
 
 BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
-templates = Jinja2Templates(directory=str((__file__[: __file__[: __file__.rfind("/")].rfind("/")] + "/templates")))
+templates = Jinja2Templates(directory=str((__file__[: __file__.rfind("/")] + "/templates")))
 
 def _normalize_results(res: Any) -> Tuple[List[str], List[Dict[str, Any]]]:
     """

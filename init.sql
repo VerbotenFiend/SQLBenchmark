@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS piattaforma (
   nome VARCHAR(100) NOT NULL UNIQUE
 );
 
--- Film (tabella attesa dal testing: "movies" con colonne "titolo", "anno", "genere")
+-- Film 
 CREATE TABLE IF NOT EXISTS movies (
   idF INT AUTO_INCREMENT PRIMARY KEY,
   titolo VARCHAR(255) NOT NULL UNIQUE,
@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS movies (
   ON DELETE CASCADE
 );
 
--- Disponibilità su piattaforme (nome storico "dove_vederlo")
+-- Disponibilità su piattaforme 
 CREATE TABLE IF NOT EXISTS dove_vederlo (
   idF INT PRIMARY KEY,
   idP1 INT NULL,
@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS dove_vederlo (
   CONSTRAINT chk_two_distinct CHECK (idP1 IS NULL OR idP2 IS NULL OR idP1 <> idP2)
 );
 
--- Indici utili (coerenti coi nomi italiani)
+-- Indici utili 
 CREATE INDEX idx_movies_anno ON movies(anno);
 CREATE INDEX idx_regista_eta ON regista(eta);
 CREATE INDEX idx_dv_p1 ON dove_vederlo(idP1);
