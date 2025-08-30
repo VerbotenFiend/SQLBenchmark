@@ -59,7 +59,7 @@ def _default_system_prompt() -> str:
     # Prompt minimale, in linea con le slide: “restituisci SOLO la query SQL”
     return (
         "Sei un esperto di SQL per MariaDB.\n"
-        "Converti la richiesta dell'utente in una query SQL **solo SELECT** valida e sicura.\n"
+        "Converti la richiesta dell'utente in una query SQL valida e sicura.\n"
         "RESTITUISCI SOLO la query SQL, senza commenti, testo o markdown."
     )
 
