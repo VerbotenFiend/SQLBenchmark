@@ -1,8 +1,7 @@
 import os
 import json
 import httpx
-from typing import Optional
-from ..models import SqlRequest, SqlResponse
+from typing import Optional, Dict, List
 from ..config import OLLAMA_URL
 from ..db import get_connection  # per leggere information_schema
 
@@ -44,7 +43,7 @@ def _build_schema_prompt() -> str:
     cur.close(); conn.close()
 
     # Aggrega per tabella
-    schema = {}
+    schema: Dict[str, List[str]] = {}
     for table, col, typ in rows:
         schema.setdefault(table, []).append(f"{col} ({typ})")
 
@@ -56,7 +55,7 @@ def _build_schema_prompt() -> str:
     return "Schema del database:\n" + "\n".join(lines)
 
 def _default_system_prompt() -> str:
-    # Prompt minimale, in linea con le slide: “restituisci SOLO la query SQL”
+    # Prompt minimale, in linea con le slide: "restituisci SOLO la query SQL"
     return (
         "Sei un esperto di SQL per MariaDB.\n"
         "Converti la richiesta dell'utente in una query SQL valida e sicura.\n"

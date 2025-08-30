@@ -1,7 +1,8 @@
 import mariadb
 from . import config
+from typing import Any
 
-def get_connection():
+def get_connection() -> mariadb.Connection:
     return mariadb.connect(
         host=config.DB_HOST,
         port=config.DB_PORT,

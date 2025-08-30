@@ -5,7 +5,7 @@ from ..logic.add import add_line
 router = APIRouter()
 
 @router.post("/add", response_model=StatusOk)
-def add(req: AddRequest):
+def add(req: AddRequest) -> StatusOk:
     try:
         add_line(req.data_line)
         return {"status": "ok"}

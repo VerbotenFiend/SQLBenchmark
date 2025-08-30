@@ -15,8 +15,8 @@ def sqlsearch(request: SqlRequest) -> SqlResponse:
     results: Optional[List[SqlResponseItem]] = None
     query = request.sql_query.strip()
 
-    conn = None
-    cur = None
+    conn: Optional[mariadb.Connection] = None
+    cur: Optional[mariadb.Cursor] = None
 
     try:
         conn = get_connection()
@@ -45,7 +45,7 @@ def sqlsearch(request: SqlRequest) -> SqlResponse:
 #
 #                    results.append(SearchResponseItem(
 #                        item_type=item_type,
-#                        properties=properties_list
+#                        properties_list
 #                    ))
                 """
                 results = []

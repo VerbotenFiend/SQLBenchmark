@@ -4,6 +4,7 @@ from fastapi.templating import Jinja2Templates
 import httpx
 import os
 from datetime import datetime
+from typing import List, Dict, Any, Tuple
 #  da modificare
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://ollama:11434") 
 USE_OLLAMA_CHAT = os.getenv("USE_OLLAMA_CHAT", "true").lower() == "true"
@@ -11,9 +12,9 @@ USE_OLLAMA_CHAT = os.getenv("USE_OLLAMA_CHAT", "true").lower() == "true"
 router = APIRouter()
 
 BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
-templates = Jinja2Templates(directory=str((__file__[: __file__.rfind("/")] + "/templates")))
+templates = Jinja2Templates(directory=str((__file__[: __file__[: __file__.rfind("/")].rfind("/")] + "/templates")))
 
-def _normalize_results(res):
+def _normalize_results(res: Any) -> Tuple[List[str], List[Dict[str, Any]]]:
     """
     Normalizza i risultati in (columns, rows).
     - Se res è una lista di dict: columns = keys del primo, rows = la lista
@@ -43,11 +44,11 @@ def _normalize_results(res):
     return [], []
 
 @router.get("/", response_class=HTMLResponse)
-async def home(request: Request):
+async def home(request: Request) -> HTMLResponse:
     return templates.TemplateResponse("index.html", {"request": request, "title": "Text→SQL UI"})
 
 @router.get("/health", response_class=HTMLResponse)
-async def health(request: Request):
+async def health(request: Request) -> HTMLResponse:
     async with httpx.AsyncClient(timeout=10.0) as client:
         resp = await client.get(f"{BACKEND_URL}/db_health")
         data = resp.json()
@@ -55,7 +56,7 @@ async def health(request: Request):
 
 # === SCHEMA ===
 @router.get("/schema", response_class=HTMLResponse)
-async def schema(request: Request):
+async def schema(request: Request) -> HTMLResponse:
     async with httpx.AsyncClient(timeout=20.0) as client:
         resp = await client.get(f"{BACKEND_URL}/schema_summary")
         rows = resp.json()
@@ -79,7 +80,7 @@ async def add_line(request: Request):
 
 # === ADD/UPDATE : ritorna JSON con esito ===
 @router.post("/ui/add", response_class=JSONResponse)
-async def add_line_modal(request: Request):
+async def add_line_modal(request: Request) -> JSONResponse:
     try:
         payload = await request.json()
     except Exception:
@@ -147,7 +148,7 @@ async def add_line_modal(request: Request):
 
 # === SQL diretto: ritorna un frammento HTML da appendere al feed ===
 @router.post("/ui/sql", response_class=HTMLResponse)
-async def ui_sql(request: Request):
+async def ui_sql(request: Request) -> HTMLResponse:
     form = await request.form()
     sql_query = form.get("sql_query", "").strip()
     if not sql_query:
@@ -179,7 +180,7 @@ async def ui_sql(request: Request):
 )
 
 @router.post("/ui/search", response_class=HTMLResponse)
-async def ui_search(request: Request):
+async def ui_search(request: Request) -> HTMLResponse:
     form = await request.form()
     question = form.get("question", "").strip()
     model = form.get("model", "gemma3:1b-it-qat")

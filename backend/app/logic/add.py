@@ -47,7 +47,7 @@ def _parse_data_line(data_line: str) -> Tuple[str, str, int, int, str, List[str]
 
 # -------- DB helper ----------------------------------------------------------
 
-def _get_or_create_regista(cur, nome: str, eta: int) -> int:
+def _get_or_create_regista(cur: mariadb.Cursor, nome: str, eta: int) -> int:
     cur.execute("SELECT idR FROM regista WHERE nome = ?", (nome,))
     row = cur.fetchone()
     if row:
@@ -56,7 +56,7 @@ def _get_or_create_regista(cur, nome: str, eta: int) -> int:
     cur.execute("INSERT INTO regista (nome, eta) VALUES (?, ?)", (nome, eta))
     return cur.lastrowid
 
-def _get_or_create_piattaforma(cur, nome: str) -> int:
+def _get_or_create_piattaforma(cur: mariadb.Cursor, nome: str) -> int:
     cur.execute("SELECT idP FROM piattaforma WHERE nome = ?", (nome,))
     row = cur.fetchone()
     if row:
@@ -64,7 +64,7 @@ def _get_or_create_piattaforma(cur, nome: str) -> int:
     cur.execute("INSERT INTO piattaforma (nome) VALUES (?)", (nome,))
     return cur.lastrowid
 
-def _upsert_film(cur, titolo: str, idR: int, anno: int, genere: str) -> int:
+def _upsert_film(cur: mariadb.Cursor, titolo: str, idR: int, anno: int, genere: str) -> int:
     cur.execute("SELECT idF FROM movies WHERE titolo = ?", (titolo,))
     row = cur.fetchone()
     if row:
@@ -79,7 +79,7 @@ def _upsert_film(cur, titolo: str, idR: int, anno: int, genere: str) -> int:
     )
     return cur.lastrowid
 
-def _replace_piattaforme(cur, idF: int, piattaforme: List[str]):
+def _replace_piattaforme(cur: mariadb.Cursor, idF: int, piattaforme: List[str]) -> None:
 
     cur.execute("SELECT idF FROM dove_vederlo WHERE idF=?", (idF,))
     if not cur.fetchone():

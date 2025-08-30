@@ -13,7 +13,7 @@ TSV_PATH = os.getenv("SEED_TSV", "/seed/data.tsv")
 
 from .db import get_connection
 
-def wait_for_db(retries=60, delay=2.0):
+def wait_for_db(retries: int = 60, delay: float = 2.0) -> None:
     for i in range(retries):
         try:
             conn = get_connection()
@@ -25,7 +25,7 @@ def wait_for_db(retries=60, delay=2.0):
     sys.exit(1)
 
 # controllo se in movies c'è qualcosa; se sì, è già popolato
-def db_has_data():
+def db_has_data() -> bool:
     conn = get_connection()
     try:
         cur = conn.cursor()
@@ -36,7 +36,7 @@ def db_has_data():
         conn.close()
 
 # apre tsv, check header (tenta la conversione col 3,4 in numeri), crea data_line csv e chiama add
-def seed_from_tsv(tsv_path: str):
+def seed_from_tsv(tsv_path: str) -> None:
     inserted, skipped, errors = 0, 0, 0
     with open(tsv_path, "r", encoding="utf-8") as f:
         reader = csv.reader(f, delimiter="\t")
