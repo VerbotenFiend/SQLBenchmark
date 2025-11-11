@@ -27,30 +27,12 @@
   <!-- Composer (sticky bottom, stile ChatGPT) -->
   <footer class="composer">
     <form id="composerForm" class="composer-inner">
-      <!-- sinistra: tendina modello  -->
-    <div class="model">
-      <button type="button" id="modelBtn" class="model-btn" aria-haspopup="true" aria-expanded="false">
-        <span id="modelLabel">gemma3:1b-it-qat</span> <span class="caret">▾</span>
-      </button>
-      <div id="modelMenu" class="menu hidden" role="menu" aria-labelledby="modelBtn">
-        <button type="button" class="menu-item" role="menuitem" data-value="gemma3:1b-it-qat">
-          gemma3:1b-it-qat <span class="tag">default</span>
-        </button>
-      </div>
-      <input type="hidden" id="modelHidden" name="model" value="gemma3:1b-it-qat">
-    </div>
-
-
+      
       <!-- textarea -->
       <textarea id="prompt" name="prompt" rows="1" placeholder="Scrivi una richiesta in linguaggio naturale…"></textarea>
 
       <!-- destra: switch LLM/SQL + invia -->
       <div class="actions">
-        <label class="switch" title="Cambia modalità (LLM / SQL)">
-          <input id="modeSwitch" type="checkbox" />
-          <span class="slider"></span>
-          <span class="switch-label"><span id="modeLabel">LLM</span></span>
-        </label>
         <button class="btn primary" id="sendBtn" type="submit">Invia</button>
       </div>
     </form>
@@ -198,23 +180,6 @@ qs("#btnClear").addEventListener("click", () => {
 });
 
 
-
-
-  // Switch modalità
-  function updateModeUI(){
-    const isSQL = modeSwitch.checked;
-    modeLabel.textContent = isSQL ? "SQL" : "LLM";
-    txt.placeholder = isSQL ? "Scrivi la tua query SQL…" : "Scrivi una richiesta in linguaggio naturale…";
-  }
-  modeSwitch.addEventListener("change", updateModeUI);
-  updateModeUI();
-
-  // FAKE OPEN
-  const modelBtn   = qs("#modelBtn");
-  const modelMenu  = qs("#modelMenu");
-  const modelLabel = qs("#modelLabel");
-  
-
   // apri/chiudi menu
   modelBtn.addEventListener("click", () => {
     const nowOpen = modelMenu.classList.toggle("hidden") === false;
@@ -270,12 +235,9 @@ qs("#btnClear").addEventListener("click", () => {
   // Composer submit → /ui/search oppure /ui/sql, ritorna un HTML fragment da appendere al feed
   qs("#composerForm").addEventListener("submit", async (e) => {
     e.preventDefault();
-    const isSQL = modeSwitch.checked;
     const prompt = txt.value.trim();
     if (!prompt) return;
 
-    // Sposta in hidden il modello 
-    const model = modelHidden.value || "gemma3:1b-it-qat";
 
     // placeholder “loading…”
     const ph = document.createElement("div");
@@ -284,14 +246,9 @@ qs("#btnClear").addEventListener("click", () => {
     feed().appendChild(ph);
 
     const fd = new FormData();
-    if (isSQL) {
-      fd.append("sql_query", prompt);
-    } else {
-      fd.append("question", prompt);
-      fd.append("model", model);
-    }
+    fd.append("sql_query", prompt);
 
-    const url = isSQL ? "/ui/sql" : "/ui/search";
+    const url = "/ui/sql";
     try {
       const r = await fetch(url, { method: "POST", body: fd });
       const html = await r.text();

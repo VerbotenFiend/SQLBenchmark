@@ -9,7 +9,4 @@ router = APIRouter()
 def sql_search(request: SqlRequest) -> Any: 
     return sqlsearch(request)
 
-@router.post("/search", response_model=SearchResponse)
-async def ask_ollama(request: SearchRequest) -> SearchResponse:
-    return await llmsearch(request)
 

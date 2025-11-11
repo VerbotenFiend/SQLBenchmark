@@ -36,23 +36,5 @@ class SqlResponse(BaseModel):
         None, description="SQL search result: list of items or null when invalid/unsafe"
     )
 
-class SearchRequest(BaseModel):
-    question: str = Field(
-        ...,
-        description="Question asked in natural language to the model"
-    )
-    model: str = Field(
-        ...,
-        description="The chosen model to ask"
-    )
-    
-class SearchResponse(BaseModel):
-    sql : str = Field(
-        "",
-        description="LLM generated query"
-    )
-    sql_validation: str = Field(..., description="valid | invalid | unsafe")
-    results: Optional[List[SqlResponseItem]] = Field(
-        None, description="SQL search result: list of items or null when invalid/unsafe"
-    )
+
     

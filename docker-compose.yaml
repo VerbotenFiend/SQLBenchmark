@@ -9,7 +9,6 @@ services:
       MARIADB_USER: movies
       MARIADB_PASSWORD: moviespwd
       MARIADB_ROOT_PASSWORD: rootpwd
-      OLLAMA_URL: http://ollama:11434
     ports:
       - "3307:3306" # host:container (config default expects 3307 on host)
     volumes:
@@ -49,28 +48,14 @@ services:
       BACKEND_URL: http://backend:8003
       APP_PORT: 8000
 
-      USE_OLLAMA_CHAT: "true"
-      OLLAMA_URL: http://ollama:11434
-
     depends_on:
       backend:
-        condition: service_started
-      ollama:        
         condition: service_started
     ports:
       - "8000:8000"
 
-  ollama:
-    image: ollama/ollama:latest
-    restart: unless-stopped
-    ports:
-      - "11434:11434"
-    volumes:
-      - ./ollama_data:/root/.ollama
-
 volumes:
   mariadb_data:
-  ollama:
 
 
 

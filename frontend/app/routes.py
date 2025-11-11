@@ -5,9 +5,7 @@ import httpx
 import os
 from datetime import datetime
 from typing import List, Dict, Any, Tuple
-#  da modificare
-OLLAMA_URL = os.getenv("OLLAMA_URL", "http://ollama:11434") 
-USE_OLLAMA_CHAT = os.getenv("USE_OLLAMA_CHAT", "true").lower() == "true"
+
 
 router = APIRouter()
 
@@ -110,42 +108,6 @@ async def add_line_modal(request: Request) -> JSONResponse:
         detail = resp.text
     return JSONResponse({"ok": False, "error": detail or f"Backend {resp.status_code}"}, status_code=422)
 
-# # === SEARCH (LLM → SQL): ritorna un frammento HTML da appendere al feed ===
-# @router.post("/ui/search", response_class=HTMLResponse)
-# async def ui_search(request: Request):
-#     form = await request.form()
-#     question = form.get("question", "").strip()
-
-#     model = form.get("model", "gemma3:1b-it-qat")
-
-#     if not question:
-#         return HTMLResponse("<div class='bubble'><span class='badge invalid'>Errore</span> Domanda mancante.</div>", status_code=400)
-
-#     async with httpx.AsyncClient(timeout=60.0) as client:
-#         resp = await client.post(f"{BACKEND_URL}/search", json={"question": question, "model": model})
-#         data = resp.json()
-
-#     sql = data.get("sql")
-#     sql_validation = data.get("sql_validation") or data.get("sql validation")  # tollera entrambe
-#     results = data.get("results")
-
-#     columns, rows = ([], [])
-#     if sql_validation == "valid" and results is not None:
-#         columns, rows = _normalize_results(results)
-
-#     return templates.TemplateResponse(
-#         "_result_row.html",
-#         {
-#             "request": request,
-#             "mode": "LLM",
-#             "when": datetime.now().strftime("%H:%M"),
-#             "sql": sql,
-#             "sql_validation": sql_validation,
-#             "columns": columns,
-#             "rows": rows,
-#         },
-#     )
-
 # === SQL diretto: ritorna un frammento HTML da appendere al feed ===
 @router.post("/ui/sql", response_class=HTMLResponse)
 async def ui_sql(request: Request) -> HTMLResponse:
@@ -178,82 +140,4 @@ async def ui_sql(request: Request) -> HTMLResponse:
             # "kv_blocks": kv_blocks,   
         },
 )
-
-@router.post("/ui/search", response_class=HTMLResponse)
-async def ui_search(request: Request) -> HTMLResponse:
-    form = await request.form()
-    question = form.get("question", "").strip()
-    model = form.get("model", "gemma3:1b-it-qat")
-
-    if not question:
-        return HTMLResponse("<div class='bubble'><span class='badge invalid'>Errore</span> Domanda mancante.</div>", status_code=400)
-
-#     # --- Modalità CHAT con Ollama: bypass del backend Text-to-SQL ---
-#     if USE_OLLAMA_CHAT:
-#         try:
-#             payload = {
-#                 "model": model,
-#                 "messages": [
-#                     {"role": "system", "content": "Sei un assistente utile. Rispondi in modo conciso."},
-#                     {"role": "user", "content": question}
-#                 ],
-#                 "stream": False
-#             }
-#             async with httpx.AsyncClient(timeout=120.0) as client:
-#                 resp = await client.post(f"{OLLAMA_URL}/api/chat", json=payload, headers={"Accept": "application/json"})
-#                 resp.raise_for_status()
-#                 data = resp.json()
-#             # L'output utile sta in data["message"]["content"]
-#             content = (data.get("message") or {}).get("content", "").strip()
-#             # Riutilizziamo il frammento esistente: mettiamo la risposta in "sql" e niente tabella
-#             return templates.TemplateResponse(
-#                 "_result_row.html",
-#                 {
-#                     "request": request,
-#                     "mode": "LLM",
-#                     "when": datetime.now().strftime("%H:%M"),
-#                     "sql": content,            # <— mostriamo il testo della risposta qui
-#                     "sql_validation": "valid",  # badge verde per non farla sembrare un errore
-#                     "columns": [],
-#                     "rows": [],
-#                 },
-#             )
-#         except httpx.RequestError as e:
-#             return HTMLResponse(f"<div class='bubble'><span class='badge invalid'>Errore</span> Connessione a Ollama fallita: {e}</div>", status_code=502)
-#         except Exception as e:
-#             return HTMLResponse(f"<div class='bubble'><span class='badge invalid'>Errore</span> {e}</div>", status_code=500)
-
-#     # --- Modalità originale Text-to-SQL: chiama il backend ---
-    # async with httpx.AsyncClient(timeout=60.0) as client:
-    #     resp = await client.post(f"{BACKEND_URL}/search", json={"question": question, "model": model})
-    #     data = resp.json()
-
-    # niente timeout di lettura/scrittura 
-    timeout = httpx.Timeout(timeout=None, connect=10.0, read=None, write=None, pool=None)
-    async with httpx.AsyncClient(timeout=timeout) as client:
-        resp = await client.post(f"{BACKEND_URL}/search", json={"question": question, "model": model})
-        data = resp.json()
-
-
-    sql = data.get("sql")
-    sql_validation = data.get("sql_validation") or data.get("sql validation")
-    results = data.get("results")
-
-    columns, rows = ([], [])
-    if sql_validation == "valid" and results is not None:
-        columns, rows = _normalize_results(results)
-
-    return templates.TemplateResponse(
-    "_result_row.html",
-    {
-        "request": request,
-        "mode": "LLM",
-        "when": datetime.now().strftime("%H:%M"),
-        "sql": sql,
-        "sql_validation": sql_validation,
-        "columns": columns,
-        "rows": rows,
-    },
-)
-
 

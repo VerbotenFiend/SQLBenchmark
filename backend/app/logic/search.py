@@ -1,9 +1,8 @@
 from ..db import get_connection
 import mariadb
 import re
-from ..models import SqlRequest, SqlResponse, Property, SqlResponseItem, SearchRequest, SearchResponse
+from ..models import SqlRequest, SqlResponse, Property, SqlResponseItem
 from typing import Optional, List
-from .text_to_sql import text_to_sql
 
 # Codice originario
 # def _infer_item_type(sql: str) -> str:
@@ -90,37 +89,4 @@ def sqlsearch(request: SqlRequest) -> SqlResponse:
 
 
 
-async def llmsearch(request: SearchRequest) -> SearchResponse:
-        try:
-            # 1) genera SQL dal testo (async!)
-            sql_query: str = await text_to_sql(request.question, request.model)
-
-            # 2) esegui l’SQL costruendo il tipo corretto
-            sql_response: SqlResponse = sqlsearch(SqlRequest(sql_query=sql_query))
-
-            # 3) incarta nel formato richiesto
-            return SearchResponse(
-                sql=sql_query,
-                sql_validation=sql_response.sql_validation,
-                results=sql_response.results
-            )
-        except Exception as e:
-            print(f"Error while executing search: {e}")
-            # 'sql' NON deve essere None
-            return SearchResponse(sql="", sql_validation="error", results=[])
-# def search(request: SearchRequest):
-#     try:
-#         sql_query = text_to_sql(request.question,request.model)
-#         sql_response = sqlsearch(sql_query)
-#         return SearchResponse(sql=sql_query, sql_validation=sql_response.sql_validation, results=sql_response.results)
-#     except Exception as e:
-#         # Log dell'errore (puoi sostituire con un logger se necessario)
-#         print(f"Error while executing search: {e}")
-#         # Restituiamo una risposta di errore
-#         return SearchResponse(
-#             sql=None,
-#             sql_validation="error",
-#             results=[],
-#         )
-    
 
