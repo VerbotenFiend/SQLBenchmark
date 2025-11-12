@@ -29,6 +29,7 @@ class SqlRequest(BaseModel):
     sql_query: str = Field(
         ..., 
         description="Sql query to execute")
+    database_name: str = Field(..., description="Database to run query against")
 
 class SqlResponse(BaseModel):
     sql_validation: str = Field(..., description="valid | invalid | unsafe")

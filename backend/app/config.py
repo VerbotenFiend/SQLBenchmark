@@ -9,5 +9,6 @@ DB_PORT = int(os.getenv("DB_PORT", "3307"))
 DB_USER = os.getenv("DB_USER", "movies")
 DB_PASSWORD = os.getenv("DB_PASSWORD", "moviespwd")
 DB_NAME = os.getenv("DB_NAME", "moviesdb")
+DB_ROOT_PASSWORD = os.getenv("MARIADB_ROOT_PASSWORD", "rootpwd")
 
 APP_PORT = int(os.getenv("APP_PORT", "8003"))

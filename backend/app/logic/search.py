@@ -18,7 +18,7 @@ def sqlsearch(request: SqlRequest) -> SqlResponse:
     cur: Optional[mariadb.Cursor] = None
 
     try:
-        conn = get_connection()
+        conn = get_connection(request.database_name)
         cur = conn.cursor()
 
         if query.lower().startswith("select"):

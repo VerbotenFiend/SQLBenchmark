@@ -37,6 +37,14 @@
       </div>
     </form>
     <small class="hint">Enter invia • Shift+Enter va a capo</small>
+    <!--aggiunta nuova tendina per scelta db-->
+    <div class="db-selector">
+      <select id="dbSelector" name="database_name">
+        <option value="">Seleziona DB...</option>
+      </select>
+    </div>
+
+<textarea id="prompt" ...></textarea>
   </footer>
 
   <!-- Modal Schema -->
@@ -246,8 +254,15 @@ qs("#btnClear").addEventListener("click", () => {
     feed().appendChild(ph);
 
     const fd = new FormData();
+    const dbName = qs("#dbSelector").value;
+    if(!dbName){
+      alert("Seleziona un DB prima di inviare la query");
+      ph.remove();
+      return;
+    }
     fd.append("sql_query", prompt);
-
+    fd.append("database_name", dbName);
+    
     const url = "/ui/sql";
     try {
       const r = await fetch(url, { method: "POST", body: fd });
@@ -318,7 +333,33 @@ function scrollBubbleIntoView(el, smooth = true){
   window.scrollTo({ top: absoluteTop, behavior: smooth ? 'smooth' : 'auto' });
 }
 
+// in base.html, <script>
 
+async function loadDatabases() {
+  const selector = qs("#dbSelector");
+  if (!selector) return;
+
+  try {
+    const r = await fetch("/admin/list_databases"); // Chiama il nuovo endpoint
+    const data = await r.json();
+
+    selector.innerHTML = ""; // Pulisci opzioni
+    data.databases.forEach(dbName => {
+      const opt = document.createElement("option");
+      opt.value = dbName;
+      opt.textContent = dbName;
+      // Se è 'moviesdb', lo preselezioniamo
+      if (dbName === "moviesdb") opt.selected = true;
+      selector.appendChild(opt);
+    });
+  } catch (e) {
+    console.error("Impossibile caricare i database", e);
+    selector.innerHTML = "<option value=''>Errore</option>";
+  }
+}
+
+// Chiama la funzione quando la pagina si carica
+document.addEventListener("DOMContentLoaded", loadDatabases);
 
 
 </script>
