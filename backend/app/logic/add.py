@@ -108,7 +108,7 @@ def _replace_piattaforme(cur: mariadb.Cursor, idF: int, piattaforme: List[str]) 
 def add_line(data_line: str) -> None:
     titolo, nome_regista, eta, anno, genere, piattaforme = _parse_data_line(data_line)
 
-    conn = get_connection()
+    conn = get_connection("moviesdb")
     try:
         cur = conn.cursor()
         idR = _get_or_create_regista(cur, nome_regista, eta)

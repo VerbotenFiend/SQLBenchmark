@@ -1,6 +1,6 @@
 from fastapi import APIRouter
-from app.models import SqlRequest, SearchRequest, SearchResponse
-from ..logic.search import sqlsearch, llmsearch
+from app.models import SqlRequest
+from ..logic.search import sqlsearch
 from typing import Any
 
 router = APIRouter()

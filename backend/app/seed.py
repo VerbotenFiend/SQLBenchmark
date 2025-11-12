@@ -16,7 +16,7 @@ from .db import get_connection
 def wait_for_db(retries: int = 60, delay: float = 2.0) -> None:
     for i in range(retries):
         try:
-            conn = get_connection()
+            conn = get_connection("moviesdb")
             conn.close()
             return
         except mariadb.Error:
@@ -26,7 +26,7 @@ def wait_for_db(retries: int = 60, delay: float = 2.0) -> None:
 
 # controllo se in movies c'è qualcosa; se sì, è già popolato
 def db_has_data() -> bool:
-    conn = get_connection()
+    conn = get_connection("moviesdb")
     try:
         cur = conn.cursor()
         cur.execute("SELECT COUNT(*) FROM movies")
